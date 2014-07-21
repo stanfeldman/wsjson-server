@@ -38,7 +38,7 @@ class Server(Singleton):
 			server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]), wsgi_app)
 		gevent.signal(signal.SIGTERM, self.stop)
 		gevent.signal(signal.SIGINT, self.stop)
-		self.eventer.publish(Server.STARTED)
+		self.eventer.publish(Server.STARTED, self)
 		try:
 			self.server.serve_forever()
 		except Exception, e:
