@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from os import path
-from wsjson.server import WsJsonServer
+from wsjson.server import Server
 
 options = {
 	"application": {
@@ -18,7 +18,7 @@ options = {
 }
 
 if __name__ == '__main__':
-	app = WsJsonServer(options)
+	app = Server(options)
 	app.start()
 
 

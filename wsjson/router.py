@@ -3,12 +3,12 @@ import json
 from geventwebsocket.exceptions import WebSocketError
 from putils.patterns import Singleton
 import logging
-
 logger = logging.getLogger(__name__)
 
-class WsJsonRouter(Singleton):
-	def __init__(self, mapping):
-		self.mapping = mapping
+
+class Router(Singleton):
+	def __init__(self, controllers_mapping):
+		self.controllers_mapping = controllers_mapping
 
 	def __call__(self, environ, start_response):
 		if 'wsgi.websocket' in environ:
@@ -44,7 +44,7 @@ class WsJsonRouter(Singleton):
 		url_and_method = data_url.rsplit('/', 1)
 		url = url_and_method[0]
 		method = url_and_method[1]
-		for (match_url, controller) in self.mapping:
+		for (match_url, controller) in self.controllers_mapping:
 			if match_url == url:
 				action = getattr(controller, method)
 				result = action(socket, data)

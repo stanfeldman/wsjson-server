@@ -4,42 +4,64 @@ import inspect
 from geventwebsocket import WebSocketServer
 from werkzeug.wsgi import SharedDataMiddleware
 from putils.patterns import Singleton
-from router import WsJsonRouter
+from router import Router
+import gevent
+import signal
+from pev import Eventer
+import logging
+logger = logging.getLogger(__name__)
 
 
-class WsJsonServer(Singleton):
+class Server(Singleton):
+	STARTED = "server_started"
+	STOPPED = "server_stopped"
 	def __init__(self, settings):
 		self.settings = settings
-		self.compile_mapping(settings["mapping"])
+		if "events" in self.settings:
+			self.eventer = Eventer(self.settings["events"])
+		else:
+			self.eventer = Eventer()
+		self.init_controllers_mapping()
 
 	def start(self):
-		wsgi_app = WsJsonRouter(self.settings["mapping"])
+		wsgi_app = Router(self.settings["controllers"])
 		wsgi_app = SharedDataMiddleware(wsgi_app, {
 			'/': self.settings["files"]
 		})
-		server = None
+		self.server = None
 		if "ssl" in self.settings:
 			ssl_info = self.settings["ssl"]
 			if "key" in ssl_info and "cert" in ssl_info:
-				server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]),
+				self.server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]),
 					wsgi_app, keyfile=ssl_info["key"], certfile=ssl_info["cert"])
-		if not server:
+		if not self.server:
 			server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]), wsgi_app)
-		server.serve_forever()
+		gevent.signal(signal.SIGTERM, self.stop)
+		gevent.signal(signal.SIGINT, self.stop)
+		self.eventer.publish(Server.STARTED)
+		try:
+			self.server.serve_forever()
+		except Exception, e:
+			logger.error("start server error %s", str(e), exc_info=True)
 
-	def compile_mapping(self, mapping):
-		mapping = Dict.flat_dict(mapping, start_char="", end_char="")
-		new_mapping = []
-		for k, v in mapping.iteritems():
+	def stop(self):
+		self.eventer.publish(Server.STOPPED)
+		self.server.stop()
+
+	def init_controllers_mapping(self):
+		controllers_mapping = Dict.flat_dict(self.settings["controllers"], start_char="", end_char="")
+		new_controllers_mapping = []
+		for k, v in controllers_mapping.iteritems():
 			if k[len(k)-2] == "/":
 				k = k[:len(k)-2] + k[len(k)-1]
 			if k[len(k)-1] == '/':
 				k = k.rstrip('/')
 			if inspect.isclass(v):
-				new_mapping.append((k, v()))
+				new_controllers_mapping.append((k, v()))
 			else:
-				new_mapping.append((k, v))
-		self.settings["mapping"] = new_mapping
+				new_controllers_mapping.append((k, v))
+		self.settings["controllers"] = new_controllers_mapping
+
 
 
 
