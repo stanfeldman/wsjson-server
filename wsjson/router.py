@@ -47,15 +47,32 @@ class Router(Singleton):
 		for (match_url, controller) in self.controllers_mapping:
 			if match_url == url:
 				action = getattr(controller, method)
-				result = action(socket, data)
-				result["url"] = data_url
-				response = json.dumps(result)
-				socket.send(response)
-				logger.info("returned %s to %s%s", response, socket.origin.rstrip('/'), data_url)
+				action(Sender(socket, data_url), data)
 				break
 
 	def on_open(self, socket):
-		logger.debug("connected to %s", socket.origin)
+		logger.info("connected to %s", socket.origin)
 
 	def on_close(self, socket):
-		logger.debug("disconnected from %s", socket.origin)
+		logger.info("disconnected from %s", socket.origin)
+
+
+class Sender(object):
+	def __init__(self, socket, url):
+		self.socket = socket
+		self.url = url
+
+	def send(self, data):
+		data["url"] = self.url
+		self.socket.send(json.dumps(data))
+
+	def send_all(self, data):
+		data["url"] = self.url
+		for client in self.socket.handler.server.clients.values():
+			client.ws.send(json.dumps(data))
+
+	def socket_send_others(self, data):
+		data["url"] = self.url
+		for client in self.socket.handler.server.clients.values():
+			if client.ws != self.socket:
+				client.ws.send(json.dumps(data))

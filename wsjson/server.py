@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from putils.types import Dict
 import inspect
+from router import Router
 from geventwebsocket import WebSocketServer
 from werkzeug.wsgi import SharedDataMiddleware
 from putils.patterns import Singleton
-from router import Router
 import gevent
 import signal
 from pev import Eventer
