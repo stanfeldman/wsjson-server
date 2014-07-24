@@ -6,7 +6,7 @@ except:
 
 setup(
     name = "wsjson",
-    version = "0.3",
+    version = "0.4",
     author = "Stanislav Feldman",
     description = ("Websocket server over Gevent wsgi server with json communication"),
     url = "https://github.com/stanislavfeldman/wsjson-server",

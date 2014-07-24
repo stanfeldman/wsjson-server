@@ -2,6 +2,7 @@
 import json
 from geventwebsocket.exceptions import WebSocketError
 from putils.patterns import Singleton
+from gevent import sleep
 import logging
 logger = logging.getLogger(__name__)
 
@@ -9,6 +10,7 @@ logger = logging.getLogger(__name__)
 class Router(Singleton):
 	def __init__(self, controllers_mapping):
 		self.controllers_mapping = controllers_mapping
+		self.sockets = []
 
 	def __call__(self, environ, start_response):
 		if 'wsgi.websocket' in environ:
@@ -47,32 +49,43 @@ class Router(Singleton):
 		for (match_url, controller) in self.controllers_mapping:
 			if match_url == url:
 				action = getattr(controller, method)
-				action(Sender(socket, data_url), data)
+				action(Sender(socket, data_url, self), data)
 				break
 
 	def on_open(self, socket):
+		self.sockets.append(socket)
 		logger.info("connected to %s", socket.origin)
 
 	def on_close(self, socket):
-		logger.info("disconnected from %s", socket.origin)
+		self.sockets.remove(socket)
+		logger.info("disconnected")
 
 
 class Sender(object):
-	def __init__(self, socket, url):
+	def __init__(self, socket, url, router):
 		self.socket = socket
 		self.url = url
+		self.router = router
 
 	def send(self, data):
+		if self.socket is None:
+			return
 		data["url"] = self.url
 		self.socket.send(json.dumps(data))
 
 	def send_all(self, data):
+		if self.socket is None:
+			return
 		data["url"] = self.url
-		for client in self.socket.handler.server.clients.values():
-			client.ws.send(json.dumps(data))
+		json_data = json.dumps(data)
+		for socket in self.router.sockets:
+			socket.send(json_data)
 
-	def socket_send_others(self, data):
+	def send_others(self, data):
+		if self.socket is None:
+			return
 		data["url"] = self.url
-		for client in self.socket.handler.server.clients.values():
-			if client.ws != self.socket:
-				client.ws.send(json.dumps(data))
+		json_data = json.dumps(data)
+		for socket in self.router.sockets:
+			if socket != self.socket:
+				socket.send(json_data)
