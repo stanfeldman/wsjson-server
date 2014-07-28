@@ -24,7 +24,7 @@ class Server(Singleton):
 		self.init_controllers_mapping()
 
 	def start(self):
-		wsgi_app = Router(self.settings["controllers"])
+		wsgi_app = Router(self)
 		wsgi_app = SharedDataMiddleware(wsgi_app, {
 			'/': self.settings["files"]
 		})

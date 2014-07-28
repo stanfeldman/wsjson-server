@@ -2,15 +2,18 @@
 import json
 from geventwebsocket.exceptions import WebSocketError
 from putils.patterns import Singleton
-from gevent import sleep
 import logging
 logger = logging.getLogger(__name__)
 
 
 class Router(Singleton):
-	def __init__(self, controllers_mapping):
-		self.controllers_mapping = controllers_mapping
+	CONNECTED = "router_connected"
+	DISCONNECTED = "router_disconnected"
+
+	def __init__(self, server):
+		self.controllers_mapping = server.settings["controllers"]
 		self.sockets = []
+		self.eventer = server.eventer
 
 	def __call__(self, environ, start_response):
 		if 'wsgi.websocket' in environ:
@@ -55,10 +58,12 @@ class Router(Singleton):
 	def on_open(self, socket):
 		self.sockets.append(socket)
 		logger.info("connected to %s", socket.origin)
+		self.eventer.publish(Router.CONNECTED, Sender(socket, "/", self))
 
 	def on_close(self, socket):
 		self.sockets.remove(socket)
 		logger.info("disconnected")
+		self.eventer.publish(Router.DISCONNECTED, Sender(socket, "/", self))
 
 
 class Sender(object):
@@ -71,21 +76,29 @@ class Sender(object):
 		if self.socket is None:
 			return
 		data["url"] = self.url
-		self.socket.send(json.dumps(data))
+		try:
+			if self.socket:
+				self.socket.send(json.dumps(data))
+		except WebSocketError:
+			pass
 
 	def send_all(self, data):
-		if self.socket is None:
-			return
 		data["url"] = self.url
 		json_data = json.dumps(data)
 		for socket in self.router.sockets:
-			socket.send(json_data)
+			try:
+				if socket:
+					socket.send(json_data)
+			except WebSocketError:
+				pass
 
 	def send_others(self, data):
-		if self.socket is None:
-			return
 		data["url"] = self.url
 		json_data = json.dumps(data)
 		for socket in self.router.sockets:
-			if socket != self.socket:
-				socket.send(json_data)
+			if socket and socket != self.socket:
+				try:
+					if socket:
+						socket.send(json_data)
+				except WebSocketError:
+					pass
