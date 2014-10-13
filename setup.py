@@ -14,6 +14,6 @@ setup(
     packages=[
     	"wsjson"
     ],
-    install_requires = ["gevent", "werkzeug", "putils", "pev"],
+    install_requires = ["gevent", "gevent-websocket", "werkzeug", "putils", "pev"],
     classifiers=[],
 )
