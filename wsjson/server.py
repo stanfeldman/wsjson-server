@@ -8,6 +8,7 @@ from putils.patterns import Singleton
 import gevent
 import signal
 from pev import Eventer
+import re
 import logging
 logger = logging.getLogger(__name__)
 
@@ -56,10 +57,11 @@ class Server(Singleton):
 				k = k[:len(k)-2] + k[len(k)-1]
 			if k[len(k)-1] == '/':
 				k = k.rstrip('/')
+			key = re.compile(k)
 			if inspect.isclass(v):
-				new_controllers_mapping.append((k, v()))
+				new_controllers_mapping.append((key, v()))
 			else:
-				new_controllers_mapping.append((k, v))
+				new_controllers_mapping.append((key, v))
 		self.settings["controllers"] = new_controllers_mapping
 
 

@@ -2,6 +2,7 @@
 import json
 from geventwebsocket.exceptions import WebSocketError
 from putils.patterns import Singleton
+import re
 import logging
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,11 @@ class Router(Singleton):
 		url = url_and_method[0]
 		method = url_and_method[1]
 		for (match_url, controller) in self.controllers_mapping:
-			if match_url == url:
+			mtch = match_url.match(url)
+			if mtch:
 				action = getattr(controller, method)
+				for key, value in mtch.groupdict().iteritems():
+					data[key] = value
 				action(Sender(socket, data_url, self), data)
 				break
 
