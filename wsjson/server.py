@@ -36,7 +36,7 @@ class Server(Singleton):
 				self.server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]),
 					wsgi_app, keyfile=ssl_info["key"], certfile=ssl_info["cert"])
 		if not self.server:
-			server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]), wsgi_app)
+			self.server = WebSocketServer((self.settings["application"]["address"], self.settings["application"]["port"]), wsgi_app)
 		gevent.signal(signal.SIGTERM, self.stop)
 		gevent.signal(signal.SIGINT, self.stop)
 		self.eventer.publish(Server.STARTED, self)
