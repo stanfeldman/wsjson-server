@@ -19,8 +19,12 @@ class Router(Singleton):
 	def __call__(self, environ, start_response):
 		if 'wsgi.websocket' in environ:
 			socket = environ['wsgi.websocket']
-			self.handle(socket)
-			return None
+			if socket:
+				self.handle(socket)
+				return None
+			else:
+				start_response('404 Not Found', [('Content-Type', 'application/json')])
+				return ["{'error':'not found}"]
 		else:
 			start_response('404 Not Found', [('Content-Type', 'application/json')])
 			return ["{'error':'not found}"]
@@ -31,16 +35,17 @@ class Router(Singleton):
 			try:
 				message = socket.receive()
 				if not message:
-					self.on_close(socket)
 					break
 				self.on_message(socket, message)
-			except WebSocketError:
-				self.on_close(socket)
-				break
 			except Exception, e:
-				logger.error("handle error %s", str(e), exc_info=True)
-				self.on_close(socket)
+				logger.error(str(e), exc_info=True)
 				break
+		try:
+			socket.close()
+		except WebSocketError, e:
+			logger.error(str(e), exc_info=True)
+		finally:
+			self.on_close(socket)
 
 	def on_message(self, socket, message):
 		data = json.loads(message)
