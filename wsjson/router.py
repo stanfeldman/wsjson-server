@@ -58,10 +58,16 @@ class Router(Singleton):
 		for (match_url, controller) in self.controllers_mapping:
 			mtch = match_url.match(url)
 			if mtch:
-				action = getattr(controller, method)
+				sender = Sender(socket, data_url, self)
 				for key, value in mtch.groupdict().iteritems():
 					data[key] = value
-				action(Sender(socket, data_url, self), data)
+				if isinstance(controller, list):
+					for c in controller:
+						action = getattr(c, method)
+						action(sender, data)
+				else:
+					action = getattr(controller, method)
+					action(sender, data)
 				break
 
 	def on_open(self, socket):

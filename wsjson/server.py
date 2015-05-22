@@ -60,6 +60,14 @@ class Server(Singleton):
 			key = re.compile(k)
 			if inspect.isclass(v):
 				new_controllers_mapping.append((key, v()))
+			elif isinstance(v, list):
+				controllers = []
+				for controller in v:
+					if inspect.isclass(controller):
+						controllers.append(controller())
+					else:
+						controllers.append(controller)
+				new_controllers_mapping.append((key, controllers))
 			else:
 				new_controllers_mapping.append((key, v))
 		self.settings["controllers"] = new_controllers_mapping
